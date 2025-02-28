@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
+    <title>Document</title>
+</head>
+<body>
+    <form action="/logining" method="post">
+        <div class="rectangle">
+            <input type="text" class="text_reg_log" name = "user_name">
+            <input type="password" class="text_reg_log" name = "user_password"><br>
+            <input type="submit" class="submit_reg_log">
+            <p class="message_for_password_and_user_name_false">{{message_error}}</p>
+        </div>
+    </form>
+</body>
+</html>

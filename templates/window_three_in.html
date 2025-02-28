@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
+    <title>Document</title>
+</head>
+<body class="body_in_three">
+
+    <div class="modal_add_new_core">
+        <button id="openModal" class="modal_window">+</button>
+    </div>
+
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close"> </span>
+            <h2>Add new core</h2><br>
+
+            <form method="POST" action="/three_in_add">
+                <input class="modal_text" type="text" id="threesName" name="threesName" placeholder="Name of the new core" required><br><br>
+                <input class="modal_submit" type="submit" value="Confirm">
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
+</body>
+</html>

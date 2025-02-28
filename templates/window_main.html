@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
+
+    <title>Main Page</title>
+</head>
+<body>  
+    <div class="href_contreiner_log_reg">
+
+            <a href="/registering_show" class="href_style_log_reg">Registration</a>
+            <a href="/logining_show" class="href_style_log_reg">Login</a>
+
+            {%if message_for_password_and_user_name == 'Успешно зареган' %}
+            <p class="message_for_password_and_user_name_true">{{message_for_password_and_user_name}}</p>
+            {%else%}
+            <p class="message_for_password_and_user_name_false">{{message_for_password_and_user_name}}</p>
+            {%endif%}
+            
+
+    </div>  
+    
+
+</body>
+</html>

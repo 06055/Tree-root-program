@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
+    <title>Main Page</title>
+</head>
+<body class="body_main_page">
+    <div class="rectangle_title_ented">
+        <p class="text_rectangle_title_ented">Choose your tree of knowledge</p>
+    </div>
+    
+    <div class="rectangle_body_ented">
+        <div class="setka">
+
+            {% for i in threes_list %}
+                <div class="circle">
+                    <a href="/three_in_show?three_id={{i[0]}}">{{i[1]}}</a>
+                </div>
+            {% endfor %}
+
+
+            <div class="circle">
+                <button id="openModal" class="modal_window">+</button>
+            </div>
+        </div>
+    </div>
+    <div class="box_shadow"></div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close"> </span>
+            <h2>Add new tree</h2><br>
+
+            <form method="POST" action="/main_page_add">
+                <input type="hidden" id="hidden_id_user" name="hidden_id_user" value="{{get_id_user[0]}}" />
+
+                <input class="modal_text" type="text" id="threesName" name="threesName" placeholder="Name of the new tree" required><br><br>
+                <input class="modal_submit" type="submit" value="Confirm">
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
+</body>
+</html>
