@@ -1,4 +1,4 @@
-from flask import Flask,render_template,request
+from flask import Flask,render_template,request,jsonify
 
 import mysql.connector
 
@@ -9,6 +9,16 @@ import mysql.connector
 2.Добавление древа 
 3.Вход в древо 
 4.Добавление 1 связи
+
+"""
+
+"""
+1.При нажатии на круг(названием) то выскакивает окно с выбором 
+--1.Выбор удалить
+--2.Выбор изменить
+--3.Добавить описание
+--4.Добавить связя с этим кругом(названием)
+
 
 """
 
@@ -82,30 +92,19 @@ def logining():
         dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
         dbc = mysql.connector.connect(**dbconfig)
         cursor = dbc.cursor()
-
         _SQL = """SELECT id FROM table_for_logi WHERE user_name = %s AND password = Sha1(%s) """
         cursor.execute(_SQL,(user_name,user_password))
         get_id_user = cursor.fetchone()
-
 
     if get_id_user:
         _SQL = """SELECT * FROM table_threes WHERE user_id = %s"""
         cursor.execute(_SQL,(get_id_user))
         threes_from_cursor = cursor.fetchall()
-
-
         for i in threes_from_cursor:
             threes_list.append(i)
-
     else:
         return render_template('window_logining.html',message_error = 'Name or password is incorrect' )
-
-
-
-
-
     return render_template('main_page_root.html', get_id_user = get_id_user, threes_list = threes_list)
-
 
 
 @app.route('/main_page_add', methods = ['POST','GET'])
@@ -113,53 +112,75 @@ def main_page():
     threes_list = list()
     get_threesName = request.form['threesName']
     get_hidden_id_user = request.form['hidden_id_user']
-
-
     if get_hidden_id_user != None and get_threesName != '' :
         dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
         dbc = mysql.connector.connect(**dbconfig)
         cursor = dbc.cursor()
-
         _SQL = """INSERT INTO table_threes(name,user_id) VALUES(%s,%s)"""
         cursor.execute(_SQL,(get_threesName,get_hidden_id_user))
         dbc.commit()
-
     _SQL = """SELECT * FROM table_threes WHERE user_id = %s"""
-    cursor.execute(_SQL,(get_threesName))
+    cursor.execute(_SQL,(get_hidden_id_user))
     threes_from_cursor = cursor.fetchall()
-
     for i in threes_from_cursor:
         threes_list.append(i)
         
     return render_template('main_page_root.html', get_id_user = get_hidden_id_user, threes_list = threes_list)
 
 
+
+dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
+
 @app.route('/three_in_show')
 def three_in_show():
     three_id = request.args.get('three_id')
-    dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
     dbc = mysql.connector.connect(**dbconfig)
     cursor = dbc.cursor()
-    print(three_id)
+
+    _SQL = "SELECT name FROM table_connection_cores WHERE three_id = %s"
+    cursor.execute(_SQL, (three_id,))
+    cores = cursor.fetchall()  
+
+    cores_names = [core[0] for core in cores]
+
+    cursor.close()
+    dbc.close()
+
+    return render_template("window_three_in.html", three_id=three_id, cores=cores_names)
 
 
-    # _SQL = """SELECT * FROM table_connection_cores WHERE  = %s"""
-    # cursor.execute(_SQL,())
-    # threes_from_cursor = cursor.fetchall()
-
-    return render_template("window_three_in.html")
-
-@app.route('/three_in_add', methods = ['POST'])
+@app.route('/three_in_add', methods=['POST'])
 def three_in_add():
-    get_name_core = request.form['threesName']
-    dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
     dbc = mysql.connector.connect(**dbconfig)
     cursor = dbc.cursor()
 
+    get_name_core = request.form['threesName']
+    get_three_id = request.form.get("three_id")
+
+    if get_name_core.strip() == "":
+        return jsonify({'success': False, 'message': 'Name is empty'})
+
+    cursor.execute("SELECT * FROM table_connection_cores WHERE three_id = %s", (get_three_id,))
+    result = cursor.fetchall()
+
+    if len(result) == 0:
+        cursor.execute(
+            "INSERT INTO table_connection_cores (name, back_core_id, three_id) VALUES (%s, %s, %s)",
+            (get_name_core, '0', get_three_id)
+        )
+        dbc.commit()
+        cursor.close()
+        dbc.close()
+        return jsonify({'success': True})
+    else:
+        print()
+        cursor.close()
+        dbc.close()
+        return jsonify({'success': False, 'message': 'Core with this three_id already exists'})
 
 
 
-    return render_template("window_three_in.html")
+
 
 
 

@@ -111,11 +111,9 @@ body {
     scrollbar-width: none; 
 }
 
-
 .rectangle_body_ented::-webkit-scrollbar {
     display: none;
 }
-
 
 .box_shadow::after{
     content: '';
@@ -129,7 +127,6 @@ body {
     pointer-events: none;
 
 }
-
 
 .circle {
     display: flex;
@@ -155,12 +152,10 @@ body {
     color: #000000;
 }
 
-
 .circle:hover {
     background-color: rgb(206, 206, 206);
     transform: scale(1.1);
 }
-
 
 .circle_add_new_tree{
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
@@ -174,11 +169,9 @@ body {
     gap: 3%;
 }
 
-
 body {
     scrollbar-width: none; 
 }
-
 
 body::-webkit-scrollbar {
     display: none;
@@ -193,7 +186,6 @@ body::-webkit-scrollbar {
 
 }
 
-
 .submit_reg_log{
     width: 100px;
     padding: 10px;
@@ -205,20 +197,20 @@ body::-webkit-scrollbar {
 }
 
 
-
 .submit_reg_log:hover {
     background-color: #ccc;
 }
 
 .modal_add_new_core {
-    position: relative;
+    position: absolute; 
+    top: 0px;          
+    right: 0;        
     display: flex;
     justify-content: center;
     align-items: center;
     width: 120px;
     height: 120px;
-    border-radius: 0px 0px 0px 30px;
-    margin-left: auto;
+    border-radius: 0 0 0 30px;
     text-align: center;
     color: rgb(0, 0, 0);
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
@@ -226,13 +218,13 @@ body::-webkit-scrollbar {
     font-weight: 500;
     transition: transform 0.3s ease;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 1%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 90%);
+    z-index: 10;
 }
 
 
 .modal_add_new_core:hover {
     transform: scale(1.1);
 }
-
 
 
 .modal_window{
@@ -251,6 +243,7 @@ body::-webkit-scrollbar {
     font-weight: 500;
 }
 
+
 .modal_window:hover{
     background-color: rgba(206, 206, 206, 0);
     border-color: rgba(231, 231, 231, 0);
@@ -265,6 +258,30 @@ body::-webkit-scrollbar {
     font-size: 90px;
     font-weight: 500;
     overflow: hidden;
+}
+
+
+.modal_window_for_cores {
+    background-color: rgba(231, 231, 231, 0);
+    border-color: rgba(231, 231, 231, 0);
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+    margin: 10px 10px;
+    border-radius: 90px;
+    border: none;
+    cursor: pointer;
+    color: #000000;
+
+    font-size: 20px;
+    font-weight: 500;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+.modal_window_for_cores:hover {
+    background-color: rgba(128, 90, 90, 0.1); 
+    color: #000000; 
 }
 
 
@@ -306,10 +323,6 @@ body::-webkit-scrollbar {
     cursor: pointer;
 }
 
-
-
-
-
 .modal_submit{
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 
@@ -335,3 +348,65 @@ body::-webkit-scrollbar {
     border-radius: 5px;
     border: none;
 }
+
+.cores_container {
+    position: absolute;
+    top: 50%;
+    left: 50%;   
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 20px;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    height: auto;
+    box-sizing: border-box;
+}
+
+
+.core_circle {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-weight: bold;
+    cursor: default;
+    user-select: none;
+    box-shadow: 0 10px 20px rgba(248, 0, 0, 0.4);
+    animation: floatCore 4s ease-in-out infinite;
+    transition: box-shadow 0.3s ease;
+}
+
+.core_circle:hover {
+    box-shadow: 0 15px 30px rgb(253, 252, 252);
+}
+
+@keyframes floatCore {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+    }
+    25% {
+        transform: translateY(-8px) translateX(4px);
+    }
+    50% {
+        transform: translateY(0) translateX(6px);
+    }
+    75% {
+        transform: translateY(5px) translateX(4px);
+    }
+}
+
+.core_main {
+    animation: floatCore 4s ease-in-out infinite;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    box-shadow: 0 10px 25px rgba(255, 255, 255, 0.144);
+}
+

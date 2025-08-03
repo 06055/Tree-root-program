@@ -1,29 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="static/style.css">
-    <title>Document</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <title>Three In Show</title>
 </head>
 <body class="body_in_three">
 
-    <div class="modal_add_new_core">
-        <button id="openModal" class="modal_window">+</button>
+    <div class="cores_container">
+        {% for core_name in cores %}
+            <div class="core_circle core_main">
+                <button class="modal_window_for_cores" data-modal="modalCoreInfo">{{ core_name }}</button>
+            </div>
+        {% else %}
+            <p>No cores found.</p>
+        {% endfor %}
     </div>
 
+    <div class="modal_add_new_core">
+        <button class="modal_window" data-modal="modalAddCore">+</button>
+    </div>  
 
-    <div id="myModal" class="modal">
+
+    <div id="modalAddCore" class="modal">
         <div class="modal-content">
-            <span class="close"> </span>
-            <h2>Add new core</h2><br>
-
-            <form method="POST" action="/three_in_add">
-                <input class="modal_text" type="text" id="threesName" name="threesName" placeholder="Name of the new core" required><br><br>
-                <input class="modal_submit" type="submit" value="Confirm">
+            <span class="close" data-close="modalAddCore">&times;</span>
+            <h2>Add new core</h2><br />
+            <form method="POST" action="/three_in_add" id="coreForm">
+                <input type="hidden" name="three_id" value="{{ three_id }}" />
+                <input
+                    class="modal_text"
+                    type="text"
+                    id="threesName"
+                    name="threesName"
+                    placeholder="Name of the new core"
+                    required
+                /><br /><br />
+                <input class="modal_submit" type="submit" value="Confirm" />
             </form>
         </div>
     </div>
+
+
+    <div id="modalCoreInfo" class="modal">
+        <div class="modal-content">
+            <span class="close" data-close="modalCoreInfo">&times;</span>
+            <h2>Core Info</h2>
+            <p>Здесь можно отобразить информацию о core, если хочешь.</p>
+        </div>
+    </div>
+
+
 
     <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
 </body>
