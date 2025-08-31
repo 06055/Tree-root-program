@@ -18,14 +18,19 @@ import mysql.connector
 --2.Выбор изменить
 --3.Добавить описание
 --4.Добавить связя с этим кругом(названием)
-
 """
 
 
 
 
-app = Flask(__name__)
+"""
+Исправить ошибку с добавлением
+добавить возможность добавления кружочка(со связей)
 
+"""
+
+
+app = Flask(__name__)
 
 
 @app.route('/')
@@ -106,25 +111,58 @@ def logining():
     return render_template('main_page_root.html', get_id_user = get_id_user, threes_list = threes_list)
 
 
-@app.route('/main_page_add', methods = ['POST','GET'])
+@app.route('/main_page_add', methods=['POST', 'GET'])
 def main_page():
-    threes_list = list()
-    get_threesName = request.form['threesName']
-    get_hidden_id_user = request.form['hidden_id_user']
-    if get_hidden_id_user != None and get_threesName != '' :
-        dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Project_Tree_Root'}
+    threes_list = []
+
+    get_threesName = request.form.get('threesName', '')
+    get_hidden_id_user = request.form.get('hidden_id_user', '')
+
+    if get_hidden_id_user and get_threesName:
+        dbconfig = {
+            'host': '127.0.0.1',
+            'user': 'Vitaly',
+            'password': 'newpassword',
+            'db': 'Project_Tree_Root'
+        }
         dbc = mysql.connector.connect(**dbconfig)
         cursor = dbc.cursor()
-        _SQL = """INSERT INTO table_threes(name,user_id) VALUES(%s,%s)"""
-        cursor.execute(_SQL,(get_threesName,get_hidden_id_user))
-        dbc.commit()
-    _SQL = """SELECT * FROM table_threes WHERE user_id = %s"""
-    cursor.execute(_SQL,(get_hidden_id_user))
-    threes_from_cursor = cursor.fetchall()
-    for i in threes_from_cursor:
-        threes_list.append(i)
-        
-    return render_template('main_page_root.html', get_id_user = get_hidden_id_user, threes_list = threes_list)
+
+
+        _CHECK_SQL = """SELECT * FROM table_threes WHERE name=%s AND user_id=%s"""
+        cursor.execute(_CHECK_SQL, (get_threesName, get_hidden_id_user))
+        copy_name = cursor.fetchone()
+
+        if not copy_name:
+            _SQL = """INSERT INTO table_threes(name, user_id) VALUES(%s, %s)"""
+            cursor.execute(_SQL, (get_threesName, get_hidden_id_user))
+            dbc.commit()
+
+
+        get_threesName = ''
+
+
+        cursor.close()
+        dbc.close()
+
+
+    if get_hidden_id_user:
+        dbconfig = {
+            'host': '127.0.0.1',
+            'user': 'Vitaly',
+            'password': 'newpassword',
+            'db': 'Project_Tree_Root'
+        }
+        dbc = mysql.connector.connect(**dbconfig)
+        cursor = dbc.cursor()
+        _SQL = """SELECT * FROM table_threes WHERE user_id=%s"""
+        cursor.execute(_SQL, (get_hidden_id_user,))
+        threes_from_cursor = cursor.fetchall()
+        threes_list.extend(threes_from_cursor)
+        cursor.close()
+        dbc.close()
+
+    return render_template('main_page_root.html', get_id_user=get_hidden_id_user, threes_list=threes_list)
 
 
 
@@ -155,6 +193,9 @@ def three_in_add():
 
     get_name_core = request.form['threesName']
     get_three_id = request.form.get("three_id")
+    print(get_name_core)
+    print(get_three_id)
+
 
     if get_name_core.strip() == "":
         return jsonify({'success': False, 'message': 'Name is empty'})
