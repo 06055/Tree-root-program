@@ -17,10 +17,13 @@
             <p>No cores found.</p>
         {% endfor %}
     </div>
-
+    
+    {%if not cores%}
     <div class="modal_add_new_core">
         <button class="modal_window" data-modal="modalAddCore">+</button>
     </div>  
+    {%endif%}
+
 
 
     <div id="modalAddCore" class="modal">

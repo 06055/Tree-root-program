@@ -130,17 +130,15 @@ def main_page():
 
 
         _CHECK_SQL = """SELECT * FROM table_threes WHERE name=%s AND user_id=%s"""
-        cursor.execute(_CHECK_SQL, (get_threesName, get_hidden_id_user))
+        cursor.execute(_CHECK_SQL, (get_threesName, get_hidden_id_user,))
         copy_name = cursor.fetchone()
 
         if not copy_name:
             _SQL = """INSERT INTO table_threes(name, user_id) VALUES(%s, %s)"""
-            cursor.execute(_SQL, (get_threesName, get_hidden_id_user))
+            cursor.execute(_SQL, (get_threesName, get_hidden_id_user,))
             dbc.commit()
 
-
         get_threesName = ''
-
 
         cursor.close()
         dbc.close()

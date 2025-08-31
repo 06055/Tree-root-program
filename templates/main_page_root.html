@@ -21,26 +21,23 @@
             {% endfor %}
 
 
-            <div class="circle">
-                <button id="openModal" class="modal_window">+</button>
-            </div>
-        </div>
+    <div class="circle">
+        <button id="openModal" class="modal_window">+</button>
     </div>
-    <div class="box_shadow"></div>
 
     <div id="myModal" class="modal">
         <div class="modal-content">
-            <span class="close"> </span>
+            <span class="close">&times;</span>
             <h2>Add new tree</h2><br>
 
-            <form id="coreForm">
-                
+            <form method="POST" action="/main_page_add">
                 <input class="modal_text" type="text" id="threesName" name="threesName" placeholder="Name of the new core" required><br><br>
                 <input class="modal_submit" type="submit" value="Confirm">
+                <input type="hidden" name="hidden_id_user" value="{{get_id_user[0]}}">
             </form>
-            
         </div>
     </div>
+
 
     <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
 </body>
