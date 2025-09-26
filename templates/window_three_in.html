@@ -5,25 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
     <title>Three In Show</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            background: #111;
+            color: white;
+            margin: 0;
+            overflow: hidden;
+        }
+        .link {
+            stroke: #aaa;
+            stroke-opacity: 0.6;
+        }
+        text {
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body class="body_in_three">
 
-    <div class="cores_container">
-        {% for core_name in cores %}
-            <div class="core_circle core_main">
-                <button class="modal_window_for_cores" data-modal="modalCoreInfo">{{ core_name }}</button>
-            </div>
-        {% else %}
-            <p>No cores found.</p>
-        {% endfor %}
-    </div>
-    
+
+    <svg width="100%" height="100%"></svg>
+
+
     {%if not cores%}
     <div class="modal_add_new_core">
         <button class="modal_window" data-modal="modalAddCore">+</button>
     </div>  
     {%endif%}
-
 
 
     <div id="modalAddCore" class="modal">
@@ -50,12 +59,168 @@
         <div class="modal-content">
             <span class="close" data-close="modalCoreInfo">&times;</span>
             <h2>Core Info</h2>
-            <p>Здесь можно отобразить информацию о core, если хочешь.</p>
+            <form action="/three_in_add_new_connect" method="post">
+                <input type="hidden" name="three_id" value="{{ three_id }}" />
+                <input type="hidden" name="thecores" value="{{ thecores }}" />
+                <input
+                    class="modal_text"
+                    type="text"
+                    name="new_connected_core"
+                    placeholder="New core"
+                    required
+                /><br /><br />
+                <input class="modal_submit" type="submit" value="Confirm" />
+            </form>
         </div>
     </div>
 
+<script>
+// ======= Данные =======
+const data = {{ cores_json|tojson }};
+const nodes = data.map(d => ({id: d.id, name: d.name}));
+const links = data.filter(d => d.back_core_id !== 0)
+                   .map(d => ({source: d.back_core_id, target: d.id}));
 
+const degree = {};
+links.forEach(l => {
+    degree[l.source] = (degree[l.source] || 0) + 1;
+    degree[l.target] = (degree[l.target] || 0) + 1;
+});
 
-    <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
+const svg = d3.select("svg");
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+// ======= Симуляция =======
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+    .force("charge", d3.forceManyBody().strength(-400))
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+// ======= Линии =======
+const link = svg.append("g")
+    .selectAll("line")
+    .data(links)
+    .join("line")
+    .attr("class", "link");
+
+// ======= Узлы (группы) =======
+const nodeGroup = svg.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .attr("class", "node-group")
+    .call(drag(simulation))
+    .on("click", (event, d) => {
+        const hiddenInput = document.querySelector("#modalCoreInfo input[name='thecores']");
+        if (hiddenInput) hiddenInput.value = d.name;
+        document.getElementById("modalCoreInfo").style.display = "block";
+    });
+
+// Круги
+const nodeCircle = nodeGroup.append("circle")
+    .attr("r", 40)
+    .attr("class", "node");
+
+// Текст внутри круга
+const nodeText = nodeGroup.append("text")
+    .text(d => d.name)
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .attr("fill", "black")
+    .attr("pointer-events", "none")
+    .attr("font-size", 12)
+    .style("user-select", "none");
+
+// ======= Градиенты + тень + hover =======
+const gradientColors = [
+    ['#4facfe','#00f2fe'],
+    ['#ff9a9e','#fad0c4'],
+    ['#a18cd1','#fbc2eb'],
+    ['#fbc2eb','#a6c1ee'],
+    ['#43e97b','#38f9d7'],
+    ['#30cfd0','#330867'],
+    ['#fddb92','#d1fdff'],
+    ['#f7971e','#ffd200']
+];
+
+const defs = svg.select("defs").empty() ? svg.append("defs") : svg.select("defs");
+
+nodeCircle.each(function(d){
+    const gradId = `grad-${d.id}`;
+    const pair = gradientColors[Math.floor(Math.random() * gradientColors.length)];
+
+    const gradient = defs.append("linearGradient")
+        .attr("id", gradId)
+        .attr("x1","0%").attr("y1","0%")
+        .attr("x2","100%").attr("y2","100%");
+
+    gradient.append("stop").attr("offset","0%").attr("stop-color", pair[0]);
+    gradient.append("stop").attr("offset","100%").attr("stop-color", pair[1]);
+
+    d3.select(this)
+      .attr("fill", `url(#${gradId})`)
+      .style("filter", "drop-shadow(0 10px 20px rgba(248,0,0,0.4))")
+      .on("mouseover", function() {
+          d3.select(this).transition().duration(200)
+              .style("filter", "drop-shadow(0 15px 30px rgba(255,255,255,0.7))");
+      })
+      .on("mouseout", function() {
+          d3.select(this).transition().duration(200)
+              .style("filter", "drop-shadow(0 10px 20px rgba(248,0,0,0.4))");
+      });
+});
+
+// ======= Симуляция tick =======
+simulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeGroup
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+// ======= Плавное колебание =======
+setTimeout(() => { 
+    floatNode(nodeGroup);
+}, 1000);
+
+function floatNode(selection) {
+    selection.transition()
+        .duration(4000 + Math.random() * 2000)
+        .ease(d3.easeSinInOut)
+        .attrTween("transform", function(d){
+            const dx = Math.random()*10-5;
+            const dy = Math.random()*10-5;
+            const ix = d3.interpolate(0, dx);
+            const iy = d3.interpolate(0, dy);
+            return t => `translate(${d.x + ix(t)},${d.y + iy(t)})`;
+        })
+        .on("end", function(){ floatNode(d3.select(this)); });
+}
+
+// ======= Drag =======
+function drag(simulation) {
+  return d3.drag()
+    .on("start", (event, d) => {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    })
+    .on("drag", (event, d) => {
+      d.fx = event.x;
+      d.fy = event.y;
+    })
+    .on("end", (event, d) => {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    });
+}
+</script>
+<script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
 </body>
 </html>

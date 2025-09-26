@@ -1,55 +1,94 @@
 document.addEventListener("DOMContentLoaded", function () {
-
-    const openModalButton = document.getElementById("openModal");
-    const modal = document.getElementById("myModal");
-
-    const closeButton = modal.querySelector(".close");
-
-    openModalButton.addEventListener("click", () => {
-        modal.style.display = "block";
+    document.querySelectorAll("[data-modal]").forEach(button => {
+        button.addEventListener("click", () => {
+            const id = button.getAttribute("data-modal");
+            const modal = id ? document.getElementById(id) : null;
+            if (modal) modal.style.display = "block";
+        });
     });
 
-    closeButton.addEventListener("click", () => {
-        modal.style.display = "none";
+    const legacyOpen = document.getElementById("openModal");
+    const legacyModal = document.getElementById("myModal");
+    if (legacyOpen && legacyModal) {
+        legacyOpen.addEventListener("click", () => {
+            legacyModal.style.display = "block";
+        });
+    }
+
+    document.querySelectorAll(".close").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-close");
+            if (targetId) {
+                const m = document.getElementById(targetId);
+                if (m) m.style.display = "none";
+            } else {
+                const modal = btn.closest(".modal");
+                if (modal) modal.style.display = "none";
+            }
+        });
     });
 
-    window.addEventListener("click", (event) => {
-        if (event.target === modal) {
-            modal.style.display = "none";
+    window.addEventListener("click", event => {
+        if (event.target && event.target.classList && event.target.classList.contains("modal")) {
+            event.target.style.display = "none";
+        }
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
         }
     });
 
     const form = document.getElementById("coreForm");
     if (form) {
-        form.addEventListener("submit", async function (event) {
-            event.preventDefault();
-
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
             const formData = new FormData(form);
 
             try {
-                const response = await fetch("/three_in_add", {
-                    method: "POST",
+                const resp = await fetch(form.action || window.location.href, {
+                    method: form.method || "POST",
                     body: formData,
                 });
 
-                if (!response.ok) {
-                    alert("Network error: " + response.status);
+                if (!resp.ok) {
+                    alert("Network error: " + resp.status);
                     return;
                 }
 
-                const result = await response.json();
-
+                const result = await resp.json();
                 if (result.success) {
-                    alert("Core added successfully!");
+                    alert("Успешно!");
                     form.reset();
-                    modal.style.display = "none";
+                    const addModal = document.getElementById("modalAddCore");
+                    if (addModal) addModal.style.display = "none";
+                    else document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
                     location.reload();
                 } else {
-                    alert("Error: " + result.message);
+                    alert("Ошибка: " + (result.message || "unknown"));
                 }
-            } catch (error) {
-                alert("Fetch error: " + error);
+            } catch (err) {
+                alert("Fetch error: " + err);
             }
         });
     }
+
+    window.showModalById = id => {
+        const m = document.getElementById(id);
+        if (m) m.style.display = "block";
+    };
+    window.hideModalById = id => {
+        const m = document.getElementById(id);
+        if (m) m.style.display = "none";
+    };
+});
+
+
+document.querySelectorAll(".modal_window_for_cores").forEach(button => {
+    button.addEventListener("click", () => {
+        const coreName = button.getAttribute("data-core");
+        const hiddenInput = document.querySelector("#modalCoreInfo input[name='thecores']");
+        if (hiddenInput) hiddenInput.value = coreName; 
+    });
 });

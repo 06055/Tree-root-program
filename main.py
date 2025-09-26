@@ -170,18 +170,14 @@ dbconfig = {'host':'127.0.0.1','user':'Vitaly','password':'newpassword','db':'Pr
 def three_in_show():
     three_id = request.args.get('three_id')
     dbc = mysql.connector.connect(**dbconfig)
-    cursor = dbc.cursor()
-
-    _SQL = "SELECT name FROM table_connection_cores WHERE three_id = %s"
+    cursor = dbc.cursor(dictionary=True)  
+    _SQL = """SELECT id, name, back_core_id, three_id FROM table_connection_cores WHERE three_id = %s"""
     cursor.execute(_SQL, (three_id,))
-    cores = cursor.fetchall()  
-
-    cores_names = [core[0] for core in cores]
-
+    cores = cursor.fetchall()
     cursor.close()
     dbc.close()
 
-    return render_template("window_three_in.html", three_id=three_id, cores=cores_names)
+    return render_template("window_three_in.html", three_id=three_id, cores_json=cores)
 
 
 @app.route('/three_in_add', methods=['POST'])
@@ -189,38 +185,91 @@ def three_in_add():
     dbc = mysql.connector.connect(**dbconfig)
     cursor = dbc.cursor()
 
-    get_name_core = request.form['threesName']
-    get_three_id = request.form.get("three_id")
-    print(get_name_core)
-    print(get_three_id)
 
+    get_name_core = request.form.get('threesName', '').strip()
+    get_three_id = request.form.get("three_id", "").strip()
 
-    if get_name_core.strip() == "":
+    if not get_name_core:
         return jsonify({'success': False, 'message': 'Name is empty'})
 
-    cursor.execute("SELECT * FROM table_connection_cores WHERE three_id = %s", (get_three_id,))
-    result = cursor.fetchall()
+    if not get_three_id:
+        return jsonify({'success': False, 'message': 'Tree ID is missing'})
 
-    if len(result) == 0:
-        cursor.execute(
-            "INSERT INTO table_connection_cores (name, back_core_id, three_id) VALUES (%s, %s, %s)",
-            (get_name_core, '0', get_three_id)
-        )
-        dbc.commit()
+
+    cursor.execute(
+        """SELECT * FROM table_connection_cores WHERE three_id = %s AND back_core_id = 0""",
+        (get_three_id,)
+    )
+    result = cursor.fetchone()
+
+    if result:
         cursor.close()
         dbc.close()
-        return jsonify({'success': True})
-    else:
-        print()
-        cursor.close()
-        dbc.close()
-        return jsonify({'success': False, 'message': 'Core with this three_id already exists'})
+        return jsonify({'success': False, 'message': 'This tree already has a root core'})
+
+    cursor.execute(
+        """INSERT INTO table_connection_cores (name, back_core_id, three_id) VALUES (%s, %s, %s)""",
+        (get_name_core, 0, get_three_id)
+    )
+    dbc.commit()
+
+
+    cursor.execute("""SELECT name FROM table_connection_cores WHERE three_id = %s""", (get_three_id,))
+    cores = cursor.fetchall()
+    cores_names = [str(core[0]) for core in cores] 
+
+    cursor.close()
+    dbc.close()
+
+    return jsonify({'success': True, 'message': 'Root core created', 'cores': cores_names})
 
 
 
+@app.route('/three_in_add_new_connect', methods=["POST"])
+def three_in_add_new_connect():
+    three_id = request.args.get('three_id')
+    dbc = mysql.connector.connect(**dbconfig)
+    cursor = dbc.cursor()
+
+    
+    get_three_id = request.form.get("three_id")
+    new_connected_core = request.form.get("new_connected_core")
+    selected_core = request.form.get("thecores")  
+
+    _SQL = """SELECT name FROM table_connection_cores WHERE three_id = %s"""
+    cursor.execute(_SQL, (get_three_id,))
+    cores = cursor.fetchall()  
+    cores_names = [core[0] for core in cores]
+
+
+    _SQL = """SELECT id from table_connection_cores WHERE name = %s and three_id = %s"""
+    cursor.execute(_SQL,(selected_core,get_three_id,))
+    back_core_id = cursor.fetchone()
+    back_core_id = back_core_id[0]
+    
+    _SQL = """INSERT INTO table_connection_cores(name,back_core_id,three_id) VALUES(%s,%s,%s) """
+    cursor.execute(_SQL,(new_connected_core,back_core_id,get_three_id,))
+    dbc.commit()
+
+    cursor.close()
+    dbc.close()
+
+    print("three_id:", get_three_id)
+    print("new_connected_core:", new_connected_core)
+    print("selected_core:", selected_core)  
+
+    return render_template("window_three_in.html", three_id=get_three_id, cores = cores_names)
 
 
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
+"""/
+Проблема с добавлением(Добавляет но с ошибкой)
+
+"""
