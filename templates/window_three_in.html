@@ -75,152 +75,237 @@
     </div>
 
 <script>
-// ======= Данные =======
 const data = {{ cores_json|tojson }};
-const nodes = data.map(d => ({id: d.id, name: d.name}));
-const links = data.filter(d => d.back_core_id !== 0)
-                   .map(d => ({source: d.back_core_id, target: d.id}));
+const nodes = data.map(d => ({ id: d.id, name: d.name, back_core_id: d.back_core_id, three_id: d.three_id }));
+const links = data
+  .filter(d => d.back_core_id !== 0)
+  .map(d => ({ source: d.back_core_id, target: d.id }));
+
 
 const degree = {};
 links.forEach(l => {
-    degree[l.source] = (degree[l.source] || 0) + 1;
-    degree[l.target] = (degree[l.target] || 0) + 1;
+  degree[l.source] = (degree[l.source] || 0) + 1;
+  degree[l.target] = (degree[l.target] || 0) + 1;
 });
+
+const PALETTE = (() => {
+  const colors = [];
+  const hues = 32;       
+  const s = 0.45;       
+  const l = 0.60;        
+  for (let i = 0; i < hues; i++) {
+    const hue = (i * 360 / hues + 8) % 360; 
+    colors.push(d3.hsl(hue, s, l).formatHex());
+  }
+  return colors;
+})();
+
+const ROOT_COLOR = "#ff3333";   
+
+
+const HUB_THRESHOLD = 4; 
+const hubColorById = new Map();
+
+function getHubColor(nodeId) {
+  if (!hubColorById.has(nodeId)) {
+
+    const idx = nodeId % PALETTE.length;
+    const color = PALETTE[idx] === ROOT_COLOR ? PALETTE[(idx + 1) % PALETTE.length] : PALETTE[idx];
+    hubColorById.set(nodeId, color);
+  }
+  return hubColorById.get(nodeId);
+}
+
+function edgeColor(d) {
+  const sd = degree[d.source] || 0;
+  const td = degree[d.target] || 0;
+  const sIsHub = sd >= HUB_THRESHOLD;
+  const tIsHub = td >= HUB_THRESHOLD;
+
+  if (sIsHub && tIsHub) {
+    if (sd !== td) {
+      return getHubColor(sd > td ? d.source : d.target);
+    } else {
+      return getHubColor(Math.min(+d.source, +d.target));
+    }
+  } else if (sIsHub) {
+    return getHubColor(d.source);
+  } else if (tIsHub) {
+    return getHubColor(d.target);
+  }
+  return "#aaa"; 
+}
 
 const svg = d3.select("svg");
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// ======= Симуляция =======
+
+const g = svg.append("g");
+
+
+const zoom = d3.zoom()
+  .scaleExtent([0.2, 5])
+  .on("zoom", (event) => g.attr("transform", event.transform));
+
+svg.call(zoom).on("dblclick.zoom", null);
+
+
 const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(120))
-    .force("charge", d3.forceManyBody().strength(-400))
-    .force("center", d3.forceCenter(width / 2, height / 2));
+  .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+  .force("charge", d3.forceManyBody().strength(-400))
+  .force("center", d3.forceCenter(width / 2, height / 2));
 
-// ======= Линии =======
-const link = svg.append("g")
-    .selectAll("line")
-    .data(links)
-    .join("line")
-    .attr("class", "link");
 
-// ======= Узлы (группы) =======
-const nodeGroup = svg.append("g")
-    .selectAll("g")
-    .data(nodes)
-    .join("g")
-    .attr("class", "node-group")
-    .call(drag(simulation))
-    .on("click", (event, d) => {
-        const hiddenInput = document.querySelector("#modalCoreInfo input[name='thecores']");
-        if (hiddenInput) hiddenInput.value = d.name;
-        document.getElementById("modalCoreInfo").style.display = "block";
-    });
+let link = g.append("g")
+  .selectAll("line")
+  .data(links)
+  .join("line")
+  .attr("class", "link")
+  .attr("stroke", edgeColor)
+  .attr("stroke-opacity", 0.7);
 
-// Круги
+
+let nodeGroup = g.append("g")
+  .selectAll("g")
+  .data(nodes, d => d.id)
+  .join("g")
+  .attr("class", "node-group")
+  .call(makeDrag(simulation));
+
+
+nodeGroup.each(d => d.__dragged = false);
+
+nodeGroup.on("click", (event, d) => {
+  if (d.__dragged) { d.__dragged = false; return; }
+  const nameInput = document.querySelector("#modalCoreInfo input[name='thecores']");
+  if (nameInput) nameInput.value = d.name;
+  const idInput = document.querySelector("#modalCoreInfo input[name='core_id']");
+  if (idInput) idInput.value = d.id;
+  document.getElementById("modalCoreInfo").style.display = "block";
+});
+
 const nodeCircle = nodeGroup.append("circle")
-    .attr("r", 40)
-    .attr("class", "node");
+  .attr("r", 40)
+  .attr("class", "node");
 
-// Текст внутри круга
 const nodeText = nodeGroup.append("text")
-    .text(d => d.name)
-    .attr("text-anchor", "middle")
-    .attr("dy", "0.35em")
-    .attr("fill", "black")
-    .attr("pointer-events", "none")
-    .attr("font-size", 12)
-    .style("user-select", "none");
+  .text(d => d.name)
+  .attr("text-anchor", "middle")
+  .attr("dy", "0.35em")
+  .attr("fill", "black")
+  .attr("pointer-events", "none")
+  .attr("font-size", 12)
+  .style("user-select", "none");
 
-// ======= Градиенты + тень + hover =======
 const gradientColors = [
-    ['#4facfe','#00f2fe'],
-    ['#ff9a9e','#fad0c4'],
-    ['#a18cd1','#fbc2eb'],
-    ['#fbc2eb','#a6c1ee'],
-    ['#43e97b','#38f9d7'],
-    ['#30cfd0','#330867'],
-    ['#fddb92','#d1fdff'],
-    ['#f7971e','#ffd200']
-];
-
+  ['#8ec5fc','#e0c3fc'],
+  ['#cfd9df','#e2ebf0'],
+  ['#fbd3e9','#bbd2c5'],
+  ['#d3cce3','#e9e4f0'],
+  ['#fbc2eb','#a6c1ee'],
+  ['#c2e9fb','#a1c4fd'],
+  ['#ffd3a5','#fd6585'],
+  ['#fdfbfb','#ebedee']
+]; 
 const defs = svg.select("defs").empty() ? svg.append("defs") : svg.select("defs");
 
 nodeCircle.each(function(d){
-    const gradId = `grad-${d.id}`;
-    const pair = gradientColors[Math.floor(Math.random() * gradientColors.length)];
+  const circle = d3.select(this);
 
-    const gradient = defs.append("linearGradient")
-        .attr("id", gradId)
-        .attr("x1","0%").attr("y1","0%")
-        .attr("x2","100%").attr("y2","100%");
+  if (d.back_core_id === 0) {
+    circle
+      .attr("fill", ROOT_COLOR)
+      .style("filter", "drop-shadow(0 12px 24px rgba(255,40,40,0.6))");
+    return;
+  }
 
-    gradient.append("stop").attr("offset","0%").attr("stop-color", pair[0]);
-    gradient.append("stop").attr("offset","100%").attr("stop-color", pair[1]);
+  const gradId = `grad-${d.id}`;
+  const pair = gradientColors[(d.id % gradientColors.length + gradientColors.length) % gradientColors.length];
 
-    d3.select(this)
-      .attr("fill", `url(#${gradId})`)
-      .style("filter", "drop-shadow(0 10px 20px rgba(248,0,0,0.4))")
-      .on("mouseover", function() {
-          d3.select(this).transition().duration(200)
-              .style("filter", "drop-shadow(0 15px 30px rgba(255,255,255,0.7))");
-      })
-      .on("mouseout", function() {
-          d3.select(this).transition().duration(200)
-              .style("filter", "drop-shadow(0 10px 20px rgba(248,0,0,0.4))");
-      });
+  const gradient = defs.append("linearGradient")
+    .attr("id", gradId)
+    .attr("x1","0%").attr("y1","0%")
+    .attr("x2","100%").attr("y2","100%");
+
+  gradient.append("stop").attr("offset","0%").attr("stop-color", pair[0]);
+  gradient.append("stop").attr("offset","100%").attr("stop-color", pair[1]);
+
+  circle
+    .attr("fill", `url(#${gradId})`)
+    .style("filter", "drop-shadow(0 10px 20px rgba(0,0,0,0.25))")
+    .on("mouseover", function() {
+      d3.select(this).transition().duration(150)
+        .style("filter", "drop-shadow(0 16px 28px rgba(0,0,0,0.35))");
+    })
+    .on("mouseout", function() {
+      d3.select(this).transition().duration(150)
+        .style("filter", "drop-shadow(0 10px 20px rgba(0,0,0,0.25))");
+    });
 });
 
-// ======= Симуляция tick =======
 simulation.on("tick", () => {
-    link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
 
-    nodeGroup
-      .attr("transform", d => `translate(${d.x},${d.y})`);
+  nodeGroup
+    .attr("transform", d => `translate(${d.x},${d.y})`);
 });
 
-// ======= Плавное колебание =======
-setTimeout(() => { 
-    floatNode(nodeGroup);
-}, 1000);
-
-function floatNode(selection) {
-    selection.transition()
-        .duration(4000 + Math.random() * 2000)
-        .ease(d3.easeSinInOut)
-        .attrTween("transform", function(d){
-            const dx = Math.random()*10-5;
-            const dy = Math.random()*10-5;
-            const ix = d3.interpolate(0, dx);
-            const iy = d3.interpolate(0, dy);
-            return t => `translate(${d.x + ix(t)},${d.y + iy(t)})`;
-        })
-        .on("end", function(){ floatNode(d3.select(this)); });
-}
-
-// ======= Drag =======
-function drag(simulation) {
+function makeDrag(simulation) {
   return d3.drag()
     .on("start", (event, d) => {
+      d.__dragged = false;
       if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
+
+      const [gx, gy] = d3.pointer(event, g.node());
+      d.fx = gx;
+      d.fy = gy;
     })
     .on("drag", (event, d) => {
-      d.fx = event.x;
-      d.fy = event.y;
+      d.__dragged = true;
+      const [gx, gy] = d3.pointer(event, g.node());
+      d.fx = gx;
+      d.fy = gy;
     })
     .on("end", (event, d) => {
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
+      setTimeout(() => { d.__dragged = false; }, 0);
     });
 }
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const coreForm = document.getElementById('coreForm');
+  if (coreForm) {
+    coreForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch(coreForm.action, { method: 'POST', body: new FormData(coreForm) });
+      const json = await res.json().catch(() => ({}));
+      if (json && json.success) location.reload();
+      else alert((json && json.message) || 'Ошибка при добавлении корневого ядра');
+    });
+  }
+
+  const connectForm = document.querySelector('#modalCoreInfo form');
+  if (connectForm) {
+    connectForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch(connectForm.action, { method: 'POST', body: new FormData(connectForm) });
+      const json = await res.json().catch(() => ({}));
+      if (json && json.success) location.reload();
+      else alert((json && json.message) || 'Ошибка при добавлении связи');
+    });
+  }
+});
 </script>
+
+
 <script src="{{ url_for('static', filename='my_javascript.js') }}"></script>
 </body>
 </html>
