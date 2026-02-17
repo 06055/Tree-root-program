@@ -24,16 +24,13 @@
 </head>
 <body class="body_in_three">
 
-
     <svg width="100%" height="100%"></svg>
-
 
     {%if not cores%}
     <div class="modal_add_new_core">
         <button class="modal_window" data-modal="modalAddCore">+</button>
     </div>  
     {%endif%}
-
 
     <div id="modalAddCore" class="modal">
         <div class="modal-content">
@@ -54,7 +51,6 @@
         </div>
     </div>
 
-
     <div id="modalCoreInfo" class="modal">
         <div class="modal-content">
             <span class="close" data-close="modalCoreInfo">&times;</span>
@@ -74,9 +70,35 @@
         </div>
     </div>
 
+<div id="nodeModal" class="node-modal">
+  <div class="node-card">
+    <form id="nodeEditForm">
+        <input type="hidden" id="selectedNodeId">
+        <input type="text"
+              id="nodeNameField"
+              placeholder="Название ядра">
+        <textarea id="nodeDescriptionField"
+                  placeholder="Описание"></textarea>
+        <div class="node-actions">
+            <button type="button" id="openConnectionBtn">Создать новую связь</button>
+            <button type="submit">Сохранить</button>
+            <button type="button" id="deleteNodeBtn" class="node-danger">Удалить</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+
 <script>
 const data = {{ cores_json|tojson }};
-const nodes = data.map(d => ({ id: d.id, name: d.name, back_core_id: d.back_core_id, three_id: d.three_id }));
+const nodes = data.map(d => ({
+  id: d.id,
+  name: d.name,
+  back_core_id: d.back_core_id,
+  three_id: d.three_id,
+  description: d.description
+}));
+
 const links = data
   .filter(d => d.back_core_id !== 0)
   .map(d => ({ source: d.back_core_id, target: d.id }));
@@ -101,8 +123,6 @@ const PALETTE = (() => {
 })();
 
 const ROOT_COLOR = "#ff3333";   
-
-
 const HUB_THRESHOLD = 4; 
 const hubColorById = new Map();
 
@@ -139,11 +159,7 @@ function edgeColor(d) {
 const svg = d3.select("svg");
 const width = window.innerWidth;
 const height = window.innerHeight;
-
-
 const g = svg.append("g");
-
-
 const zoom = d3.zoom()
   .scaleExtent([0.2, 5])
   .on("zoom", (event) => g.attr("transform", event.transform));
@@ -178,12 +194,22 @@ nodeGroup.each(d => d.__dragged = false);
 
 nodeGroup.on("click", (event, d) => {
   if (d.__dragged) { d.__dragged = false; return; }
+
+  document.getElementById("nodeNameField").value = d.name;
+  document.getElementById("nodeDescriptionField").value = d.description || "";
+  document.getElementById("selectedNodeId").value = d.id;
+  document.getElementById("nodeModal").style.display = "flex";
+
   const nameInput = document.querySelector("#modalCoreInfo input[name='thecores']");
   if (nameInput) nameInput.value = d.name;
+
   const idInput = document.querySelector("#modalCoreInfo input[name='core_id']");
   if (idInput) idInput.value = d.id;
-  document.getElementById("modalCoreInfo").style.display = "block";
+
+  document.getElementById("selectedNodeId").value = d.id;
 });
+
+
 
 const nodeCircle = nodeGroup.append("circle")
   .attr("r", 40)
@@ -244,7 +270,61 @@ nodeCircle.each(function(d){
     });
 });
 
+
+
+nodeGroup
+  .on("mouseenter", function(event, d) {
+
+      const circle = d3.select(this).select("circle");
+      const fill = circle.attr("fill");
+
+      let glowColor = "#ffffff";
+
+      if (fill && fill.startsWith("url(")) {
+          const gradId = fill.match(/#(.*?)\)/)?.[1];
+          if (gradId) {
+              const stop = document.querySelector(`#${gradId} stop`);
+              if (stop) {
+                  glowColor = stop.getAttribute("stop-color");
+              }
+          }
+      } else {
+          glowColor = fill;
+      }
+
+      circle
+        .transition()
+        .duration(200)
+        .attr("r", 46)
+        .style("filter", `drop-shadow(0 0 25px ${glowColor})`);
+
+      document.body.style.transition = "background 0.4s ease";
+
+      link.attr("stroke-opacity", l =>
+          l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
+      );
+  })
+
+  .on("mouseleave", function(event, d) {
+
+      d3.select(this).select("circle")
+        .transition()
+        .duration(200)
+        .attr("r", 40)
+        .style("filter", "drop-shadow(0 10px 20px rgba(0,0,0,0.25))");
+
+      document.body.style.background =
+          "linear-gradient(0deg, #000000 22%, #805A5A 99%)";
+
+      link.attr("stroke-opacity", 0.7);
+  });
+
+
+
 simulation.on("tick", () => {
+
+  const time = Date.now() * 0.001;
+
   link
     .attr("x1", d => d.source.x)
     .attr("y1", d => d.source.y)
@@ -252,24 +332,29 @@ simulation.on("tick", () => {
     .attr("y2", d => d.target.y);
 
   nodeGroup
-    .attr("transform", d => `translate(${d.x},${d.y})`);
+    .attr("transform", d => {
+
+        const floatX = Math.sin(time + d.id) * 2;
+        const floatY = Math.cos(time + d.id) * 2;
+
+        return `translate(${d.x + floatX}, ${d.y + floatY})`;
+    });
+
 });
+
 
 function makeDrag(simulation) {
   return d3.drag()
     .on("start", (event, d) => {
       d.__dragged = false;
       if (!event.active) simulation.alphaTarget(0.3).restart();
-
-      const [gx, gy] = d3.pointer(event, g.node());
-      d.fx = gx;
-      d.fy = gy;
+      d.fx = d.x;
+      d.fy = d.y;
     })
     .on("drag", (event, d) => {
       d.__dragged = true;
-      const [gx, gy] = d3.pointer(event, g.node());
-      d.fx = gx;
-      d.fy = gy;
+      d.fx = event.x;
+      d.fy = event.y;
     })
     .on("end", (event, d) => {
       if (!event.active) simulation.alphaTarget(0);
@@ -278,6 +363,7 @@ function makeDrag(simulation) {
       setTimeout(() => { d.__dragged = false; }, 0);
     });
 }
+
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -303,6 +389,133 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+function getSelectedNodeId() {
+    return document.getElementById("selectedNodeId").value;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const nodeForm = document.getElementById("nodeEditForm");
+  const deleteBtn = document.getElementById("deleteNodeBtn");
+  const openBtn = document.getElementById("openConnectionBtn");
+  const nodeModal = document.getElementById("nodeModal");
+
+  if(nodeForm){
+    nodeForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+
+        const fd = new FormData();
+        fd.append("core_id", document.getElementById("selectedNodeId").value);
+        fd.append("new_name", document.getElementById("nodeNameField").value);
+        fd.append("description", document.getElementById("nodeDescriptionField").value);
+
+        const res = await fetch("/update_core_full", {
+            method: "POST",
+            body: fd
+        });
+
+        const json = await res.json();
+        if(json.success){
+            location.reload();
+        } else {
+            alert("Ошибка сохранения");
+        }
+    });
+  }
+
+  if(deleteBtn){
+    deleteBtn.addEventListener("click", async () => {
+        if (!confirm("Delete this node?")) return;
+
+        const fd = new FormData();
+        fd.append("core_id", document.getElementById("selectedNodeId").value);
+
+        const res = await fetch("/delete_core", { method: "POST", body: fd });
+        const json = await res.json();
+
+        if (json.success) location.reload();
+    });
+  }
+
+  if(openBtn){
+    openBtn.addEventListener("click", () => {
+        nodeModal.style.display = "none";
+        document.getElementById("modalCoreInfo").style.display = "block";
+    });
+  }
+
+  if(nodeModal){
+    nodeModal.addEventListener("click", function(e){
+        if(e.target === this){
+            this.style.display = "none";
+        }
+    });
+  }
+
+});
+
+
+
+document.getElementById("addDescriptionBtn")?.addEventListener("click", async () => {
+    const desc = prompt("Enter description:");
+    if (!desc) return;
+
+    const fd = new FormData();
+    fd.append("core_id", getSelectedNodeId());
+    fd.append("description", desc);
+
+    const res = await fetch("/add_description", { method: "POST", body: fd });
+    const json = await res.json();
+
+    if (json.success) alert("Description saved");
+});
+
+document.getElementById("openConnectionBtn")?.addEventListener("click", () => {
+    document.getElementById("modalNodeActions").style.display = "none";
+    document.getElementById("modalCoreInfo").style.display = "block";
+});
+
+
+document.getElementById("nodeModal")
+.addEventListener("click", function(e){
+    if(e.target === this){
+        this.style.display = "none";
+    }
+});
+
+document.getElementById("openConnectionBtn")
+.addEventListener("click", function(){
+    document.getElementById("nodeModal").style.display = "none";
+    document.getElementById("modalCoreInfo").style.display = "block";
+});
+
+
+
+document.getElementById("nodeEditForm")
+.addEventListener("submit", async function(e){
+    e.preventDefault();
+
+    const fd = new FormData();
+    fd.append("core_id", document.getElementById("selectedNodeId").value);
+    fd.append("new_name", document.getElementById("nodeNameField").value);
+    fd.append("description", document.getElementById("nodeDescriptionField").value);
+
+    const res = await fetch("/update_core_full", {
+        method: "POST",
+        body: fd
+    });
+
+    const json = await res.json();
+
+    if(json.success){
+        location.reload();
+    } else {
+        alert("Ошибка сохранения");
+    }
+});
+
+
 </script>
 
 

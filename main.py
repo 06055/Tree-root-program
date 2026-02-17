@@ -3,15 +3,6 @@ from flask import Flask,render_template,request,jsonify
 import mysql.connector
 
 
-
-"""
-1.Страница выбора древа
-2.Добавление древа 
-3.Вход в древо 
-4.Добавление 1 связи
-
-"""
-
 """
 1.При нажатии на круг(названием) то выскакивает окно с выбором 
 --1.Выбор удалить
@@ -35,8 +26,6 @@ app = Flask(__name__)
 
 @app.route('/')
 def main_fux():
-
-
     return render_template("window_main.html")
 
 
@@ -125,7 +114,7 @@ def main_page():
         dbc = mysql.connector.connect(**dbconfig)
         cursor = dbc.cursor()
 
-
+        
         _CHECK_SQL = """SELECT * FROM table_threes WHERE name=%s AND user_id=%s"""
         cursor.execute(_CHECK_SQL, (get_threesName, get_hidden_id_user,))
         copy_name = cursor.fetchone()
@@ -168,7 +157,9 @@ def three_in_show():
     three_id = request.args.get('three_id')
     dbc = mysql.connector.connect(**dbconfig)
     cursor = dbc.cursor(dictionary=True)  
-    _SQL = """SELECT id, name, back_core_id, three_id FROM table_connection_cores WHERE three_id = %s"""
+    _SQL = """SELECT id, name, back_core_id, three_id, description 
+          FROM table_connection_cores WHERE three_id = %s"""
+
     cursor.execute(_SQL, (three_id,))
     cores = cursor.fetchall()
     cursor.close()
@@ -189,7 +180,6 @@ def three_in_add():
 
     if not get_three_id:
         return jsonify({'success': False, 'message': 'Tree ID is missing'})
-
 
     cursor.execute(
         """SELECT * FROM table_connection_cores WHERE three_id = %s AND back_core_id = 0""",
@@ -259,8 +249,8 @@ def three_in_add_new_connect():
                 return jsonify({'success': False, 'message': 'core_id or thecores (clicked node) is required'})
             cursor.execute(
                 """SELECT id FROM table_connection_cores
-                   WHERE three_id=%s AND TRIM(LOWER(name))=TRIM(LOWER(%s))
-                   LIMIT 1""",
+                WHERE three_id=%s AND TRIM(LOWER(name))=TRIM(LOWER(%s))
+                LIMIT 1""",
                 (three_id, thecores)
             )
             row = cursor.fetchone()
@@ -284,8 +274,8 @@ def three_in_add_new_connect():
 
         cursor.execute(
             """SELECT id, back_core_id FROM table_connection_cores
-               WHERE three_id=%s AND TRIM(LOWER(name))=TRIM(LOWER(%s))
-               LIMIT 1""",
+                WHERE three_id=%s AND TRIM(LOWER(name))=TRIM(LOWER(%s))
+                LIMIT 1 """,
             (three_id, selected_core)
         )
         existing_child = cursor.fetchone()
@@ -331,7 +321,103 @@ def three_in_add_new_connect():
         except:
             pass
 
+
+
+@app.route('/delete_core', methods=['POST'])
+def delete_core():
+    dbc = mysql.connector.connect(**dbconfig)
+    cursor = dbc.cursor()
+
+    core_id = request.form.get("core_id")
+    if not core_id:
+        return jsonify({"success": False})
+
+    cursor.execute("DELETE FROM table_connection_cores WHERE id=%s", (core_id,))
+    dbc.commit()
+
+    cursor.close()
+    dbc.close()
+
+    return jsonify({"success": True})
+
+
+
+@app.route('/edit_core', methods=['POST'])
+def edit_core():
+    dbc = mysql.connector.connect(**dbconfig)
+    cursor = dbc.cursor()
+
+    core_id = request.form.get("core_id")
+    new_name = request.form.get("new_name")
+
+    if not core_id or not new_name:
+        return jsonify({"success": False})
+
+    cursor.execute(
+        "UPDATE table_connection_cores SET name=%s WHERE id=%s",
+        (new_name, core_id)
+    )
+    dbc.commit()
+
+    cursor.close()
+    dbc.close()
+
+    return jsonify({"success": True})
+
+
+
+@app.route('/add_description', methods=['POST'])
+def add_description():
+    dbc = mysql.connector.connect(**dbconfig)
+    cursor = dbc.cursor()
+
+    core_id = request.form.get("core_id")
+    description = request.form.get("description")
+
+    cursor.execute(
+        "UPDATE table_connection_cores SET description=%s WHERE id=%s",
+        (description, core_id)
+    )
+    dbc.commit()
+
+    cursor.close()
+    dbc.close()
+
+    return jsonify({"success": True})
+
+
+
+
+@app.route('/update_core_full', methods=['POST'])
+def update_core_full():
+    dbc = mysql.connector.connect(**dbconfig)
+    cursor = dbc.cursor()
+
+    core_id = request.form.get("core_id")
+    new_name = request.form.get("new_name")
+    description = request.form.get("description")
+
+    if not core_id:
+        return jsonify({"success": False})
+
+    cursor.execute("""
+        UPDATE table_connection_cores
+        SET name=%s, description=%s
+        WHERE id=%s
+    """, (new_name, description, core_id))
+
+    dbc.commit()
+    cursor.close()
+    dbc.close()
+
+    return jsonify({"success": True})
+
+
+
+
+
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
-    
